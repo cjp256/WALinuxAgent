@@ -1223,7 +1223,7 @@ class WireClient(object):
                                         health_report,
                                         headers=headers,
                                         max_retry=30,
-                                        retry_delay=15)
+                                        retry_initial_delay=15)
         except HttpError as e:
             raise ProtocolError((u"Failed to send provision status: "
                                  u"{0}").format(e))

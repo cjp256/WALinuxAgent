@@ -35,7 +35,7 @@ from azurelinuxagent.common.version import PY_VERSION_MAJOR, AGENT_NAME, GOAL_ST
 SECURE_WARNING_EMITTED = False
 
 DEFAULT_RETRIES = 6
-DELAY_IN_SECONDS = 1
+RETRY_INITIAL_DELAY_IN_SECONDS = 1
 
 THROTTLE_RETRIES = 25
 THROTTLE_DELAY_IN_SECONDS = 1
@@ -134,11 +134,30 @@ class IOErrorCounter(object):
         IOErrorCounter._protocol_endpoint = endpoint
 
 
-def _compute_delay(retry_attempt=1, delay=DELAY_IN_SECONDS):
+def _compute_delay(retry_attempt, initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS):
+    """Compute backoff delay in seconds.
+
+    Compute delay backoff using Fibonacci sequence with factor of initial
+    delay.
+
+    Example delay sequence for initial_delay=1:
+    1, 2, 3, 5, 8, 13, 21, 34, 55, ...
+
+    Example delay sequence for initial_delay=2:
+    2, 4, 6, 10, 16, 26, 42, 68, 110, ...
+
+    Example delay sequence for initial_delay=5:
+    5, 10, 15, 25, 40, 65, 105, 170, 275, ...
+
+    :param retry_attempt: Retry attempt number.
+    :param initial_delay: Initial delay in seconds.
+
+    :return: Delay in seconds.
+    """
     fib = (1, 1)
-    for _ in range(retry_attempt):
+    for _ in range(retry_attempt-1):
         fib = (fib[1], fib[0]+fib[1])
-    return delay*fib[1]
+    return initial_delay*fib[1]
 
 
 def _is_retry_status(status, retry_codes=None):
@@ -353,7 +372,7 @@ def http_request(method,
                  use_proxy=False,
                  max_retry=None,
                  retry_codes=None,
-                 retry_delay=DELAY_IN_SECONDS,
+                 retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS,
                  redact_data=False):
 
     if max_retry is None:
@@ -413,7 +432,7 @@ def http_request(method,
             delay = THROTTLE_DELAY_IN_SECONDS \
                         if was_throttled \
                         else _compute_delay(retry_attempt=attempt,
-                                            delay=retry_delay)
+                                            initial_delay=retry_initial_delay)
 
             logger.verbose("[HTTP Retry] "
                         "Attempt {0} of {1} will delay {2} seconds: {3}", 
@@ -485,7 +504,7 @@ def http_get(url,
              use_proxy=False,
              max_retry=None,
              retry_codes=None,
-             retry_delay=DELAY_IN_SECONDS):
+             retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS):
 
     if max_retry is None:
         max_retry = DEFAULT_RETRIES
@@ -496,7 +515,7 @@ def http_get(url,
                         use_proxy=use_proxy,
                         max_retry=max_retry,
                         retry_codes=retry_codes,
-                        retry_delay=retry_delay)
+                        retry_initial_delay=retry_initial_delay)
 
 
 def http_head(url,
@@ -504,7 +523,7 @@ def http_head(url,
               use_proxy=False,
               max_retry=None,
               retry_codes=None,
-              retry_delay=DELAY_IN_SECONDS):
+              retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS):
 
     if max_retry is None:
         max_retry = DEFAULT_RETRIES
@@ -515,7 +534,7 @@ def http_head(url,
                         use_proxy=use_proxy,
                         max_retry=max_retry,
                         retry_codes=retry_codes,
-                        retry_delay=retry_delay)
+                        retry_initial_delay=retry_initial_delay)
 
 
 def http_post(url,
@@ -524,7 +543,7 @@ def http_post(url,
               use_proxy=False,
               max_retry=None,
               retry_codes=None,
-              retry_delay=DELAY_IN_SECONDS):
+              retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS):
 
     if max_retry is None:
         max_retry = DEFAULT_RETRIES
@@ -535,7 +554,7 @@ def http_post(url,
                         use_proxy=use_proxy,
                         max_retry=max_retry,
                         retry_codes=retry_codes,
-                        retry_delay=retry_delay)
+                        retry_initial_delay=retry_initial_delay)
 
 
 def http_put(url,
@@ -544,7 +563,7 @@ def http_put(url,
              use_proxy=False,
              max_retry=None,
              retry_codes=None,
-             retry_delay=DELAY_IN_SECONDS,
+             retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS,
              redact_data=False):
 
     if max_retry is None:
@@ -556,7 +575,7 @@ def http_put(url,
                         use_proxy=use_proxy,
                         max_retry=max_retry,
                         retry_codes=retry_codes,
-                        retry_delay=retry_delay,
+                        retry_initial_delay=retry_initial_delay,
                         redact_data=redact_data)
 
 
@@ -565,7 +584,7 @@ def http_delete(url,
                 use_proxy=False,
                 max_retry=None,
                 retry_codes=None,
-                retry_delay=DELAY_IN_SECONDS):
+                retry_initial_delay=RETRY_INITIAL_DELAY_IN_SECONDS):
 
     if max_retry is None:
         max_retry = DEFAULT_RETRIES
@@ -576,7 +595,7 @@ def http_delete(url,
                         use_proxy=use_proxy,
                         max_retry=max_retry,
                         retry_codes=retry_codes,
-                        retry_delay=retry_delay)
+                        retry_initial_delay=retry_initial_delay)
 
 
 def request_failed(resp, ok_codes=None):

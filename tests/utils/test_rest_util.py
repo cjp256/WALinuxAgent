@@ -615,7 +615,8 @@ class TestHttpOperations(AgentTestCase):
         self.assertEqual(restutil.DEFAULT_RETRIES, _sleep.call_count)
         self.assertEqual(
             [
-                call(restutil._compute_delay(i+1, restutil.DELAY_IN_SECONDS))
+                call(restutil._compute_delay(
+                    i+1, restutil.RETRY_INITIAL_DELAY_IN_SECONDS))
                     for i in range(restutil.DEFAULT_RETRIES)],
             _sleep.call_args_list)
 
